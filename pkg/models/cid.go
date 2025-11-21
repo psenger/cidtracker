@@ -1,50 +1,33 @@
 package models
 
-import (
-	"regexp"
-	"time"
+import "time"
 
-	"github.com/google/uuid"
-)
+// CID represents a correlation identifier found in logs
+type CID struct {
+	ID        string    `json:"id"`
+	Value     string    `json:"value"`
+	Timestamp time.Time `json:"timestamp"`
+	Source    string    `json:"source"`
+}
 
-// CIDEntry represents a parsed CID log entry
+// CIDEntry represents a single CID extraction from a log line
 type CIDEntry struct {
-	Timestamp   time.Time `json:"timestamp"`
-	CID         string    `json:"cid"`
-	UUID        uuid.UUID `json:"uuid"`
-	RawLine     string    `json:"raw_line"`
-	Source      string    `json:"source"`
-	Correlation string    `json:"correlation_id,omitempty"`
+	CID       string    `json:"cid"`
+	Timestamp time.Time `json:"timestamp"`
+	LogLine   string    `json:"log_line"`
+	UUIDs     []UUID    `json:"uuids"`
 }
 
-// CIDPattern represents different CID extraction patterns
-type CIDPattern struct {
-	Name        string         `json:"name"`
-	Regex       *regexp.Regexp `json:"-"`
-	RegexString string         `json:"regex"`
-	UUIDGroup   int            `json:"uuid_group"`
-	Enabled     bool           `json:"enabled"`
+// UUID represents an extracted UUID from CID content
+type UUID struct {
+	Value       string    `json:"value"`
+	Version     int       `json:"version"`
+	ExtractedAt time.Time `json:"extracted_at"`
 }
 
-// LogSource represents a monitored log source
-type LogSource struct {
-	Path        string   `json:"path"`
-	Name        string   `json:"name"`
-	Patterns    []string `json:"patterns"`
-	Active      bool     `json:"active"`
-	LastRead    int64    `json:"last_read"`
-	Description string   `json:"description,omitempty"`
-}
-
-// ValidationResult holds UUID validation results
-type ValidationResult struct {
-	Valid   bool   `json:"valid"`
-	Version int    `json:"version"`
-	Variant string `json:"variant"`
-	Error   string `json:"error,omitempty"`
-}
-
-// IsU5UUID validates if the UUID is version 5
-func (v ValidationResult) IsU5UUID() bool {
-	return v.Valid && v.Version == 5
+// CorrelatedEntry represents a processed CID entry with correlation metadata
+type CorrelatedEntry struct {
+	CIDEntry      CIDEntry  `json:"cid_entry"`
+	CorrelationID string    `json:"correlation_id"`
+	ProcessedAt   time.Time `json:"processed_at"`
 }
