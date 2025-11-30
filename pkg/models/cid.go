@@ -1,33 +1,40 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
-// CID represents a correlation identifier found in logs
+// CID represents a correlation identifier with validation status
 type CID struct {
-	ID        string    `json:"id"`
-	Value     string    `json:"value"`
+	Value   string `json:"value"`
+	IsValid bool   `json:"is_valid"`
+	UUID    string `json:"uuid,omitempty"`
+}
+
+// CIDRecord represents a processed log entry with extracted CID information
+type CIDRecord struct {
+	CID         string            `json:"cid"`
+	UUID        string            `json:"uuid,omitempty"`
+	Timestamp   time.Time         `json:"timestamp"`
+	RawLogLine  string            `json:"raw_log_line"`
+	IsValid     bool              `json:"is_valid"`
+	ExtractedAt time.Time         `json:"extracted_at"`
+	Metadata    map[string]string `json:"metadata,omitempty"`
+}
+
+// LogEntry represents a structured log entry for processing
+type LogEntry struct {
+	Timestamp time.Time         `json:"timestamp"`
+	Level     string            `json:"level,omitempty"`
+	Message   string            `json:"message"`
+	Source    string            `json:"source,omitempty"`
+	Fields    map[string]string `json:"fields,omitempty"`
+}
+
+// ProcessingResult contains the results of CID extraction and validation
+type ProcessingResult struct {
+	CIDs      []CID     `json:"cids"`
 	Timestamp time.Time `json:"timestamp"`
-	Source    string    `json:"source"`
-}
-
-// CIDEntry represents a single CID extraction from a log line
-type CIDEntry struct {
-	CID       string    `json:"cid"`
-	Timestamp time.Time `json:"timestamp"`
-	LogLine   string    `json:"log_line"`
-	UUIDs     []UUID    `json:"uuids"`
-}
-
-// UUID represents an extracted UUID from CID content
-type UUID struct {
-	Value       string    `json:"value"`
-	Version     int       `json:"version"`
-	ExtractedAt time.Time `json:"extracted_at"`
-}
-
-// CorrelatedEntry represents a processed CID entry with correlation metadata
-type CorrelatedEntry struct {
-	CIDEntry      CIDEntry  `json:"cid_entry"`
-	CorrelationID string    `json:"correlation_id"`
-	ProcessedAt   time.Time `json:"processed_at"`
+	Success   bool      `json:"success"`
+	Error     string    `json:"error,omitempty"`
 }

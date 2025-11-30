@@ -1,6 +1,9 @@
 package processor
 
 import (
+	"context"
+	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -8,65 +11,138 @@ import (
 	"github.com/cidtracker/pkg/models"
 )
 
-type LogProcessor struct {
-	extractor *extractor.CIDExtractor
-	entries   []models.CorrelatedEntry
-	mu        sync.RWMutex
+type Metrics struct {
+	ProcessedLogs    int64
+	ExtractedCIDs    int64
+	ValidCIDs        int64
+	InvalidCIDs      int64
+	ProcessingErrors int64
+	mu               sync.RWMutex
 }
 
-func NewLogProcessor() *LogProcessor {
-	return &LogProcessor{
+func (m *Metrics) IncrementProcessed() {
+	m.mu.Lock()
+	m.ProcessedLogs++
+	m.mu.Unlock()
+}
+
+func (m *Metrics) IncrementExtracted() {
+	m.mu.Lock()
+	m.ExtractedCIDs++
+	m.mu.Unlock()
+}
+
+func (m *Metrics) IncrementValid() {
+	m.mu.Lock()
+	m.ValidCIDs++
+	m.mu.Unlock()
+}
+
+func (m *Metrics) IncrementInvalid() {
+	m.mu.Lock()
+	m.InvalidCIDs++
+	m.mu.Unlock()
+}
+
+func (m *Metrics) IncrementErrors() {
+	m.mu.Lock()
+	m.ProcessingErrors++
+	m.mu.Unlock()
+}
+
+func (m *Metrics) GetStats() (int64, int64, int64, int64, int64) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.ProcessedLogs, m.ExtractedCIDs, m.ValidCIDs, m.InvalidCIDs, m.ProcessingErrors
+}
+
+type Processor struct {
+	extractor *extractor.CIDExtractor
+	metrics   *Metrics
+	outputCh  chan<- models.CIDRecord
+	ctx       context.Context
+	cancel    context.CancelFunc
+	wg        sync.WaitGroup
+}
+
+func NewProcessor(outputCh chan<- models.CIDRecord) *Processor {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &Processor{
 		extractor: extractor.NewCIDExtractor(),
-		entries:   make([]models.CorrelatedEntry, 0),
+		metrics:   &Metrics{},
+		outputCh:  outputCh,
+		ctx:       ctx,
+		cancel:    cancel,
 	}
 }
 
-func (p *LogProcessor) ProcessLogLine(logLine string) error {
-	cidEntries := p.extractor.ExtractCIDs(logLine)
-	if len(cidEntries) == 0 {
+func (p *Processor) ProcessLogLine(logLine string) error {
+	p.metrics.IncrementProcessed()
+
+	cids, err := p.extractor.ExtractCIDs(logLine)
+	if err != nil {
+		p.metrics.IncrementErrors()
+		return fmt.Errorf("failed to extract CIDs: %w", err)
+	}
+
+	if len(cids) == 0 {
 		return nil
 	}
 
-	correlated := p.extractor.CorrelateEntries(cidEntries)
+	p.metrics.IncrementExtracted()
 
-	p.mu.Lock()
-	p.entries = append(p.entries, correlated...)
-	p.mu.Unlock()
+	for _, cid := range cids {
+		record := models.CIDRecord{
+			CID:         cid.Value,
+			Timestamp:   time.Now(),
+			RawLogLine:  logLine,
+			IsValid:     cid.IsValid,
+			ExtractedAt: time.Now(),
+		}
+
+		if cid.IsValid {
+			p.metrics.IncrementValid()
+		} else {
+			p.metrics.IncrementInvalid()
+		}
+
+		select {
+		case p.outputCh <- record:
+		case <-p.ctx.Done():
+			return p.ctx.Err()
+		}
+	}
 
 	return nil
 }
 
-func (p *LogProcessor) GetEntries() []models.CorrelatedEntry {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return append([]models.CorrelatedEntry(nil), p.entries...)
+func (p *Processor) Start() {
+	p.wg.Add(1)
+	go p.metricsReporter()
 }
 
-func (p *LogProcessor) GetEntriesSince(since time.Time) []models.CorrelatedEntry {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	var filtered []models.CorrelatedEntry
-	for _, entry := range p.entries {
-		if entry.ProcessedAt.After(since) {
-			filtered = append(filtered, entry)
-		}
-	}
-	return filtered
+func (p *Processor) Stop() {
+	p.cancel()
+	p.wg.Wait()
 }
 
-func (p *LogProcessor) ClearOldEntries(olderThan time.Duration) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+func (p *Processor) metricsReporter() {
+	defer p.wg.Done()
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
 
-	cutoff := time.Now().Add(-olderThan)
-	var kept []models.CorrelatedEntry
-
-	for _, entry := range p.entries {
-		if entry.ProcessedAt.After(cutoff) {
-			kept = append(kept, entry)
+	for {
+		select {
+		case <-ticker.C:
+			processed, extracted, valid, invalid, errors := p.metrics.GetStats()
+			log.Printf("Processor metrics - Processed: %d, Extracted: %d, Valid: %d, Invalid: %d, Errors: %d",
+				processed, extracted, valid, invalid, errors)
+		case <-p.ctx.Done():
+			return
 		}
 	}
+}
 
-	p.entries = kept
+func (p *Processor) GetMetrics() *Metrics {
+	return p.metrics
 }
