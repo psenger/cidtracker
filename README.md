@@ -4,4 +4,4 @@ Docker sidecar for observability and correlation of CID-tagged logs with UUID ex
 
 ## Updates
 
-Commit 6
+this is not suitable for using... still has issues. 
