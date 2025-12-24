@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # Sample application that generates logs with CIDs
+  log-generator:
+    build:
+      context: ./log-generator
+      dockerfile: Dockerfile
+    container_name: sample-app
+    environment:
+      - LOG_DIR=/var/log/app
+      - LOG_INTERVAL=3s
+    volumes:
+      - app-logs:/var/log/app
+    restart: unless-stopped
+
+  # CID Tracker - monitors logs and extracts CIDs
+  cidtracker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: cidtracker
+    command: ["-log-path=/var/log/app", "-output=json", "-verbose"]
+    volumes:
+      - app-logs:/var/log/app:ro
+    depends_on:
+      - log-generator
+    restart: unless-stopped
+
+volumes:
+  app-logs:
+    driver: local

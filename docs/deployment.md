@@ -92,13 +92,13 @@ spec:
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `CIDTRACKER_LOG_DIR` | Directory to monitor for logs | `/var/log` |
-| `CIDTRACKER_OUTPUT_FORMAT` | Output format (json/structured) | `json` |
-| `CIDTRACKER_BUFFER_SIZE` | Log processing buffer size | `1000` |
-| `CIDTRACKER_POLL_INTERVAL` | File polling interval | `100ms` |
-| `CIDTRACKER_CID_PATTERN` | Custom CID regex pattern | (default U5 pattern) |
+| Variable                   | Description                     | Default              |
+|----------------------------|---------------------------------|----------------------|
+| `CIDTRACKER_LOG_DIR`       | Directory to monitor for logs   | `/var/log`           |
+| `CIDTRACKER_OUTPUT_FORMAT` | Output format (json/structured) | `json`               |
+| `CIDTRACKER_BUFFER_SIZE`   | Log processing buffer size      | `1000`               |
+| `CIDTRACKER_POLL_INTERVAL` | File polling interval           | `100ms`              |
+| `CIDTRACKER_CID_PATTERN`   | Custom CID regex pattern        | (default U5 pattern) |
 
 ### Health Checks
 

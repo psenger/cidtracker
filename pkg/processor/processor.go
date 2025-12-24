@@ -2,13 +2,12 @@ package processor
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"sync"
 	"time"
 
-	"github.com/cidtracker/pkg/extractor"
-	"github.com/cidtracker/pkg/models"
+	"cidtracker/pkg/extractor"
+	"cidtracker/pkg/models"
 )
 
 type Metrics struct {
@@ -79,28 +78,27 @@ func NewProcessor(outputCh chan<- models.CIDRecord) *Processor {
 func (p *Processor) ProcessLogLine(logLine string) error {
 	p.metrics.IncrementProcessed()
 
-	cids, err := p.extractor.ExtractCIDs(logLine)
-	if err != nil {
-		p.metrics.IncrementErrors()
-		return fmt.Errorf("failed to extract CIDs: %w", err)
-	}
+	entries := p.extractor.ExtractCIDs(logLine)
 
-	if len(cids) == 0 {
+	if len(entries) == 0 {
 		return nil
 	}
 
 	p.metrics.IncrementExtracted()
 
-	for _, cid := range cids {
+	for _, entry := range entries {
+		// Check if any valid UUIDs were extracted
+		isValid := len(entry.UUIDs) > 0
+
 		record := models.CIDRecord{
-			CID:         cid.Value,
-			Timestamp:   time.Now(),
-			RawLogLine:  logLine,
-			IsValid:     cid.IsValid,
+			CID:         entry.CID,
+			Timestamp:   entry.Timestamp,
+			RawLogLine:  entry.LogLine,
+			IsValid:     isValid,
 			ExtractedAt: time.Now(),
 		}
 
-		if cid.IsValid {
+		if isValid {
 			p.metrics.IncrementValid()
 		} else {
 			p.metrics.IncrementInvalid()

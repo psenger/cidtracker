@@ -1,6 +1,7 @@
 package models
 
 import (
+	"regexp"
 	"time"
 )
 
@@ -37,4 +38,57 @@ type ProcessingResult struct {
 	Timestamp time.Time `json:"timestamp"`
 	Success   bool      `json:"success"`
 	Error     string    `json:"error,omitempty"`
+}
+
+// LogSource represents a log file source configuration
+type LogSource struct {
+	Path        string   `json:"path"`
+	Name        string   `json:"name"`
+	Patterns    []string `json:"patterns"`
+	Active      bool     `json:"active"`
+	Description string   `json:"description"`
+}
+
+// CIDPattern represents a pattern for extracting CIDs
+type CIDPattern struct {
+	Name        string         `json:"name"`
+	RegexString string         `json:"regex_string"`
+	Regex       *regexp.Regexp `json:"-"`
+	UUIDGroup   int            `json:"uuid_group"`
+	Enabled     bool           `json:"enabled"`
+}
+
+// CIDEntry represents an extracted CID entry with associated UUIDs
+type CIDEntry struct {
+	CID       string    `json:"cid"`
+	Timestamp time.Time `json:"timestamp"`
+	LogLine   string    `json:"log_line"`
+	UUIDs     []UUID    `json:"uuids"`
+}
+
+// UUID represents an extracted UUID with metadata
+type UUID struct {
+	Value       string    `json:"value"`
+	Version     int       `json:"version"`
+	ExtractedAt time.Time `json:"extracted_at"`
+}
+
+// CorrelatedEntry represents a CID entry with correlation information
+type CorrelatedEntry struct {
+	CIDEntry      CIDEntry  `json:"cid_entry"`
+	CorrelationID string    `json:"correlation_id"`
+	ProcessedAt   time.Time `json:"processed_at"`
+}
+
+// ValidationResult contains the result of UUID validation
+type ValidationResult struct {
+	Valid   bool   `json:"valid"`
+	Version int    `json:"version"`
+	Variant string `json:"variant"`
+	Error   string `json:"error,omitempty"`
+}
+
+// IsU5UUID returns true if the UUID is version 5
+func (v ValidationResult) IsU5UUID() bool {
+	return v.Version == 5
 }

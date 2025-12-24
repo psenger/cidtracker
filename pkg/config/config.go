@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/cidtracker/pkg/models"
+	"cidtracker/pkg/models"
 )
 
 // Config holds the application configuration

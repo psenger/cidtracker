@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cidtracker/pkg/models"
-	"github.com/cidtracker/pkg/validator"
+	"cidtracker/pkg/models"
+	"cidtracker/pkg/validator"
 )
 
 type CIDExtractor struct {
@@ -16,8 +16,8 @@ type CIDExtractor struct {
 
 func NewCIDExtractor() *CIDExtractor {
 	return &CIDExtractor{
-		cidPattern: regexp.MustCompile(`CID\[(\S+)\]`),
-		uuidValidator: validator.NewUUIDValidator(),
+		cidPattern:    regexp.MustCompile(`CID\[(\S+)\]`),
+		uuidValidator: validator.NewUUIDValidator(true),
 	}
 }
 

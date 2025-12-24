@@ -3,7 +3,7 @@ package validator
 import (
 	"fmt"
 
-	"github.com/cidtracker/pkg/models"
+	"cidtracker/pkg/models"
 	"github.com/google/uuid"
 )
 
@@ -60,17 +60,29 @@ func (v *UUIDValidator) getUUIDVersion(u uuid.UUID) int {
 
 // getUUIDVariant extracts the variant from a UUID
 func (v *UUIDValidator) getUUIDVariant(u uuid.UUID) string {
-	variantBits := (u[8] & 0xc0) >> 6
-	switch variantBits {
-	case 0:
+	// Check variant bits in byte 8
+	// NCS: 0xxxxxxx (high bit is 0)
+	// RFC4122: 10xxxxxx (high bits are 10)
+	// Microsoft: 110xxxxx (high bits are 110)
+	// Reserved: 111xxxxx (high bits are 111)
+	b := u[8]
+	if (b & 0x80) == 0 {
 		return "NCS"
-	case 1:
-		return "RFC4122"
-	case 2:
-		return "Microsoft"
-	case 3:
-		return "Reserved"
-	default:
-		return "Unknown"
 	}
+	if (b & 0xc0) == 0x80 {
+		return "RFC4122"
+	}
+	if (b & 0xe0) == 0xc0 {
+		return "Microsoft"
+	}
+	return "Reserved"
+}
+
+// IsValidU5UUID checks if a UUID string is a valid version 5 UUID
+func (v *UUIDValidator) IsValidU5UUID(uuidStr string) bool {
+	parsedUUID, err := uuid.Parse(uuidStr)
+	if err != nil {
+		return false
+	}
+	return v.getUUIDVersion(parsedUUID) == 5
 }
